@@ -1,0 +1,13 @@
+## Interface: 11305
+## Author: Neya
+## Version: 0.1
+## Title: |cff1784d1ElvUI|r |cff76FF03Classic Class Bars|r
+## Notes: Adds flyout bars for class utility spells and totems.
+## RequiredDeps: ElvUI
+## DefaultState: Enabled
+## X-ElvuiVersion: 1.27
+
+Init.lua
+Config.lua
+Core.lua
+Database.lua
