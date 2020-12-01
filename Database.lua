@@ -32,7 +32,10 @@ Module.database = {
         ConjureGem = {759, 3552, 10053, 10054},
         PolymorphSheep = {118, 12824, 12825, 12826},
         PolymorphPig = {28272},
-        PolymorphTurtle = {28271}
+        PolymorphTurtle = {28271},
+        FrostArmor = {168, 7300, 7301},
+        IceArmor = {7302, 7320, 10219, 10220},
+        MageArmor = {6117, 22782, 22783}
     },
     Shaman = {
         FireTotems = {
@@ -79,7 +82,17 @@ Module.database = {
     }
 }
 
-local spellRankTables = {Module.database.Mage.ConjureFood, Module.database.Mage.ConjureWater, Module.database.Mage.ConjureGem, Module.database.Mage.PolymorphSheep}
+local spellRankTables = {Module.database.Mage.ConjureFood, Module.database.Mage.ConjureWater, Module.database.Mage.ConjureGem, Module.database.Mage.PolymorphSheep, Module.database.Mage.MageArmor}
+
+local frostAndIceArmor = {}
+for i, id in next, Module.database.Mage.FrostArmor do
+    table.insert(frostAndIceArmor, id)
+end
+for i, id in next, Module.database.Mage.IceArmor do
+    table.insert(frostAndIceArmor, id)
+end
+table.insert(spellRankTables, frostAndIceArmor)
+
 for i, totemRankTable in next, Module.database.Shaman.FireTotems do
     table.insert(spellRankTables, totemRankTable)
 end

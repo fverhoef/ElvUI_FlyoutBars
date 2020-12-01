@@ -31,6 +31,17 @@ function Module:CreateMageBar(masqueGroup)
     table.insert(polymorphs, Module.database.Mage.PolymorphPig[1])
     table.insert(polymorphs, Module.database.Mage.PolymorphTurtle[1])
 
+    local armor = {}
+    for i, id in next, Module.database.Mage.FrostArmor do
+        table.insert(armor, id)
+    end
+    for i, id in next, Module.database.Mage.IceArmor do
+        table.insert(armor, id)
+    end
+    for i, id in next, Module.database.Mage.MageArmor do
+        table.insert(armor, id)
+    end
+
     local faction = UnitFactionGroup("player")
 
     -- create new parent frame for buttons
@@ -83,6 +94,14 @@ function Module:CreateMageBar(masqueGroup)
         direction = "UP",
         actions = polymorphs,
         defaultActionIndex = #polymorphs,
+        showOnlyMaxRank = true,
+        masqueGroup = masqueGroup
+    })
+    frame.buttons[7] = Module:CreateSpellFlyout("Armor", frame, {
+        size = config.buttonSize,
+        direction = "UP",
+        actions = armor,
+        defaultActionIndex = 1,
         showOnlyMaxRank = true,
         masqueGroup = masqueGroup
     })
