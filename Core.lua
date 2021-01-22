@@ -384,9 +384,11 @@ function Module:CreateSpellFlyout(name, parent, config)
     button.CurrentAction.Duration:SetAllPoints()
 
     -- Create flyout border and arrow
-    button.FlyoutArrow = button:CreateTexture(nil, "OVERLAY", "ActionBarFlyoutButton-ArrowUp")
-    button.FlyoutArrow:SetParent(button.CurrentAction)
-    button.FlyoutArrow:SetPoint("CENTER", button.CurrentAction, "CENTER")
+    button.FlyoutArrowHolder = CreateFrame("Frame", nil, button.CurrentAction)
+    button.FlyoutArrowHolder:SetPoint("CENTER", button.CurrentAction, "CENTER")
+    button.FlyoutArrowHolder:SetFrameLevel(button.CurrentAction:GetFrameLevel() + 20)
+    button.FlyoutArrow = button.FlyoutArrowHolder:CreateTexture(nil, "OVERLAY", "ActionBarFlyoutButton-ArrowUp")
+    button.FlyoutArrow:SetPoint("CENTER", button.FlyoutArrowHolder, "CENTER")
 
     -- create background for child buttons
     button.FlyoutBackground = CreateFrame("Frame", "FlyoutButton_" .. name .. "_Background", button)
