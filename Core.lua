@@ -41,12 +41,16 @@ function Module:CreateMageBar(masqueGroup)
     for i, id in next, Module.database.Mage.MageArmor do
         table.insert(armor, id)
     end
+    for i, id in next, Module.database.Mage.MoltenArmor do
+        table.insert(armor, id)
+    end
 
     local faction = UnitFactionGroup("player")
 
     -- create new parent frame for buttons
     local frame = CreateFrame("Frame", addonName .. "_MageBar", UIParent)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    frame:CreateBackdrop("Transparent")
     frame.db = config
     frame.buttons = {}
     frame.buttons[1] = Module:CreateSpellFlyout("Teleports", frame, {
@@ -161,6 +165,7 @@ function Module:CreateShamanBar(masqueGroup)
     -- create new parent frame for buttons
     local frame = CreateFrame("Frame", addonName .. "_ShamanBar", UIParent)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    frame:CreateBackdrop("Transparent")
     frame.db = config
     frame.buttons = {}
     frame.buttons[1] = Module:CreateSpellFlyout("FireTotems", frame, {
@@ -276,12 +281,11 @@ function Module:UpdateClassBar(bar)
     local height = bar.db.buttonSize
 
     if bar.db.backdrop then
-        bar:CreateBackdrop("Transparent")
         bar.backdrop:Show()
 
         width = width + 2 * spacing
         height = height + 2 * spacing
-    elseif bar.backdrop then
+    else
         bar.backdrop:Hide()
     end
 
@@ -583,13 +587,14 @@ function Module:UpdateSpellFlyoutBackground(button)
     end
 
     if (button.direction == "UP" or button.direction == "DOWN") then
-        button.FlyoutBackground:SetHeight((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count - SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING +
+        button.FlyoutBackground:SetHeight((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count -
+                                              SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING +
                                               SPELLFLYOUT_FINAL_SPACING)
         button.FlyoutBackground:SetWidth(button.size - 3)
     else
         button.FlyoutBackground:SetHeight(button.size - 3)
-        button.FlyoutBackground:SetWidth((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count - SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING +
-                                             SPELLFLYOUT_FINAL_SPACING)
+        button.FlyoutBackground:SetWidth((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count -
+                                             SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING + SPELLFLYOUT_FINAL_SPACING)
     end
 end
 

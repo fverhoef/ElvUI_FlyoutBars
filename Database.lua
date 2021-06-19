@@ -7,35 +7,49 @@ Module.database = {
             Alliance = {
                 10059, -- Stormwind
                 11416, -- Ironforge
-                11419 -- Darnassus
+                11419, -- Darnassus
+                32266, -- Exodar
+                49360, -- Theramore
+                33691 -- Shattrath
             },
             Horde = {
                 11417, -- Orgrimmar
                 11418, -- Undercity
-                11420 -- Thunder Bluff
+                11420, -- Thunder Bluff
+                32267, -- Silvermoon
+                49361, -- Stonard
+                35717 -- Shattrath
             }
         },
         Teleports = {
             Alliance = {
                 3561, -- Stormwind
                 3562, -- Ironforge
-                3565 -- Darnassus
+                3565, -- Darnassus
+                32271, -- Exodar
+                49359, -- Theramore
+                33690 -- Shattrath
             },
             Horde = {
                 3567, -- Orgrimmar
                 3563, -- Undercity
-                3566 -- Thunder Bluff
+                3566, -- Thunder Bluff
+                32272, -- Silvermoon
+                49358, -- Stonard
+                35715 -- Shattrath
             }
         },
-        ConjureFood = {587, 597, 990, 6129, 10144, 10145, 28612},
-        ConjureWater = {5504, 5505, 5506, 6127, 10138, 10139, 10140},
-        ConjureGem = {759, 3552, 10053, 10054},
+        ConjureFood = {587, 597, 990, 6129, 10144, 10145, 28612, 33717},
+        ConjureWater = {5504, 5505, 5506, 6127, 10138, 10139, 10140, 37420, 27090},
+        ConjureTable = {43987},
+        ConjureGem = {759, 3552, 10053, 10054, 27101},
         PolymorphSheep = {118, 12824, 12825, 12826},
         PolymorphPig = {28272},
         PolymorphTurtle = {28271},
         FrostArmor = {168, 7300, 7301},
-        IceArmor = {7302, 7320, 10219, 10220},
-        MageArmor = {6117, 22782, 22783}
+        IceArmor = {7302, 7320, 10219, 10220, 27124},
+        MageArmor = {6117, 22782, 22783, 27125},
+        MoltenArmor = {30482}
     },
     Shaman = {
         FireTotems = {
@@ -82,7 +96,7 @@ Module.database = {
     }
 }
 
-local spellRankTables = {Module.database.Mage.ConjureFood, Module.database.Mage.ConjureWater, Module.database.Mage.ConjureGem, Module.database.Mage.PolymorphSheep, Module.database.Mage.MageArmor}
+local spellRankTables = {Module.database.Mage.ConjureFood, Module.database.Mage.ConjureWater, Module.database.Mage.ConjureGem, Module.database.Mage.PolymorphSheep, Module.database.Mage.MageArmor, Module.database.Mage.MoltenArmor}
 
 local frostAndIceArmor = {}
 for i, id in next, Module.database.Mage.FrostArmor do
