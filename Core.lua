@@ -29,13 +29,7 @@ function Addon:CreateFlyoutBar(name, config)
     bar.db = config
     bar.buttons = {}
     for i, button in ipairs(config.buttons) do
-        bar.buttons[i] = Addon:CreateFlyoutButton("Teleports", bar, {
-            size = config.buttonSize,
-            direction = "UP",
-            actions = button.actions,
-            defaultActionIndex = button.defaultActionIndex,
-            showOnlyMaxRank = button.showOnlyMaxRank
-        })
+        bar.buttons[i] = Addon:CreateFlyoutButton("Teleports", bar, button)
     end
 
     bar:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -119,19 +113,17 @@ function Addon:UpdateFlyoutBar(bar)
     bar:SetSize(width, height)
 end
 
-function Addon:CreateFlyoutButton(name, parent, config)
+function Addon:CreateFlyoutButton(name, bar, config)
     local defaultAction = config.actions[config.defaultActionIndex or 1]
 
     -- create parent frame
-    local button = CreateFrame("Frame", "FlyoutButton_" .. name, parent, "SecureHandlerStateTemplate")
-    button.tag = name
+    local button = CreateFrame("Frame", "FlyoutButton_" .. name, bar, "SecureHandlerStateTemplate")
+    button.bar = bar
     button.config = config
-    button.actions = config.actions
     button.defaultAction = defaultAction
     button.showOnlyMaxRank = config.showOnlyMaxRank or false
-    button.size = config.size
-    button.childSize = button.size - 8
-    button.direction = config.direction
+    button.size = button.bar.db.buttonSize
+    button.childSize = button.bar.db.buttonSize - 8
     button.childButtons = {}
     button:EnableMouse(true)
     button:SetSize(button.size, button.size)
@@ -194,12 +186,12 @@ function Addon:CreateFlyoutButton(name, parent, config)
         GameTooltip:SetOwner(button.CurrentAction, "ANCHOR_LEFT")
         GameTooltip:SetSpellByID(button.CurrentAction.spellID, false, true)
         Addon:UpdateFlyoutButtonBackground(button)
-        AB:Bar_OnEnter(parent)
+        AB:Bar_OnEnter(bar)
     end)
     button.CurrentAction:HookScript("OnLeave", function()
         GameTooltip:Hide()
         Addon:UpdateFlyoutButtonBackground(button)
-        AB:Bar_OnLeave(parent)
+        AB:Bar_OnLeave(bar)
     end)
     button.CurrentAction:HookScript("OnClick", function()
         button.CurrentAction:SetChecked(false)
@@ -263,16 +255,12 @@ function Addon:CreateFlyoutButton(name, parent, config)
 
     button:SetScript("OnEvent", function(self, event)
         Addon:UpdateFlyoutButton(button)
-        for i, child in next, button.childButtons do
-            Addon:UpdateFlyoutButtonChild(button, child)
-        end
     end)
 
     return button
 end
 
 function Addon:UpdateFlyoutButton(button)
-    local actions = button.actions
     local defaultAction = button.defaultAction
 
     button.isOpen = button.CurrentAction:GetAttribute("open") == 1
@@ -282,7 +270,7 @@ function Addon:UpdateFlyoutButton(button)
 
         -- generate buttons
         local previousButton
-        for i, action in next, actions do
+        for i, action in next, button.config.actions do
             local actionButton = button.childButtons[action]
 
             -- generate a new button if known and not generated yet
@@ -315,7 +303,7 @@ function Addon:UpdateFlyoutButton(button)
 
         -- if the default is an unknown spell, try to find one that we do know
         if not IsSpellKnown(defaultAction) then
-            for i, action in next, button.actions do
+            for i, action in next, button.config.actions do
                 if IsSpellKnown(action) then
                     defaultAction = action
                 end
@@ -334,10 +322,18 @@ function Addon:UpdateFlyoutButton(button)
         button.defaultAction = defaultAction
     end
 
+    button.size = button.bar.db.buttonSize
+    button.childSize = button.bar.db.buttonSize - 8
+    button:SetSize(button.bar.db.buttonSize, button.bar.db.buttonSize)
+    button.CurrentAction:SetSize(button.bar.db.buttonSize, button.bar.db.buttonSize)
     Addon:UpdateFlyoutButtonBackground(button)
 
-    if button.count > 0 then
+    if button.count > 0 and button.config.enabled then
         button:Show()
+
+        for i, child in next, button.childButtons do
+            Addon:UpdateFlyoutButtonChild(button, child)
+        end
     else
         button:Hide()
     end
@@ -349,13 +345,13 @@ function Addon:UpdateFlyoutButtonBackground(button)
     local arrowDistance = button.isOpen and 5 or 2
     button.FlyoutArrow:Show()
     button.FlyoutArrow:ClearAllPoints()
-    if button.direction == "LEFT" then
+    if button.bar.db.direction == "LEFT" then
         button.FlyoutArrow:SetPoint("LEFT", button.CurrentAction, "LEFT", -arrowDistance, 0)
         SetClampedTextureRotation(button.FlyoutArrow, 270)
-    elseif button.direction == "RIGHT" then
+    elseif button.bar.db.direction == "RIGHT" then
         button.FlyoutArrow:SetPoint("RIGHT", button.CurrentAction, "RIGHT", arrowDistance, 0)
         SetClampedTextureRotation(button.FlyoutArrow, 90)
-    elseif button.direction == "DOWN" then
+    elseif button.bar.db.direction == "DOWN" then
         button.FlyoutArrow:SetPoint("BOTTOM", button.CurrentAction, "BOTTOM", 0, -arrowDistance)
         SetClampedTextureRotation(button.FlyoutArrow, 180)
     else
@@ -370,8 +366,11 @@ function Addon:UpdateFlyoutButtonBackground(button)
     end
 
     button.FlyoutBackground:EnableMouse(button.isOpen)
+    button.FlyoutBackground.End:SetSize(button.size, 22)
+    button.FlyoutBackground.Vertical:SetSize(button.size, button.size)
+    button.FlyoutBackground.Horizontal:SetSize(button.size, button.size)
 
-    if button.direction == "UP" then
+    if button.bar.db.direction == "UP" then
         button.FlyoutBackground:SetPoint("BOTTOM", button, "TOP")
         button.FlyoutBackground.End:Show()
         button.FlyoutBackground.End:SetPoint("TOP", button.FlyoutBackground, "TOP", 0, 0)
@@ -381,7 +380,7 @@ function Addon:UpdateFlyoutButtonBackground(button)
         button.FlyoutBackground.Vertical:ClearAllPoints()
         button.FlyoutBackground.Vertical:SetPoint("TOP", button.FlyoutBackground.End, "BOTTOM")
         button.FlyoutBackground.Vertical:SetPoint("BOTTOM", 0, -4)
-    elseif button.direction == "DOWN" then
+    elseif button.bar.db.direction == "DOWN" then
         button.FlyoutBackground:SetPoint("TOP", button, "BOTTOM")
         button.FlyoutBackground.End:Show()
         button.FlyoutBackground.End:SetPoint("BOTTOM", button.FlyoutBackground, "BOTTOM", 0, 0)
@@ -391,7 +390,7 @@ function Addon:UpdateFlyoutButtonBackground(button)
         button.FlyoutBackground.Vertical:ClearAllPoints()
         button.FlyoutBackground.Vertical:SetPoint("BOTTOM", button.FlyoutBackground.End, "TOP")
         button.FlyoutBackground.Vertical:SetPoint("TOP", 0, 4)
-    elseif button.direction == "LEFT" then
+    elseif button.bar.db.direction == "LEFT" then
         button.FlyoutBackground:SetPoint("RIGHT", button, "LEFT")
         button.FlyoutBackground.End:Show()
         button.FlyoutBackground.End:SetPoint("LEFT", button.FlyoutBackground, "LEFT", 0, 0)
@@ -401,7 +400,7 @@ function Addon:UpdateFlyoutButtonBackground(button)
         button.FlyoutBackground.Horizontal:ClearAllPoints()
         button.FlyoutBackground.Horizontal:SetPoint("LEFT", button.FlyoutBackground.End, "RIGHT")
         button.FlyoutBackground.Horizontal:SetPoint("RIGHT", 4, 0)
-    elseif button.direction == "RIGHT" then
+    elseif button.bar.db.direction == "RIGHT" then
         button.FlyoutBackground:SetPoint("LEFT", button, "RIGHT")
         button.FlyoutBackground.End:Show()
         button.FlyoutBackground.End:SetPoint("RIGHT", button.FlyoutBackground, "RIGHT", 0, 0)
@@ -413,7 +412,7 @@ function Addon:UpdateFlyoutButtonBackground(button)
         button.FlyoutBackground.Horizontal:SetPoint("LEFT", -4, 0)
     end
 
-    if (button.direction == "UP" or button.direction == "DOWN") then
+    if (button.bar.db.direction == "UP" or button.bar.db.direction == "DOWN") then
         button.FlyoutBackground:SetHeight((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count -
                                               SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING +
                                               SPELLFLYOUT_FINAL_SPACING)
@@ -449,25 +448,25 @@ function Addon:CreateFlyoutButtonChild(button, action, index, previousButton)
     end
 
     actionButton:ClearAllPoints()
-    if button.direction == "UP" then
+    if button.bar.db.direction == "UP" then
         if previousButton then
             actionButton:SetPoint("BOTTOM", previousButton, "TOP", 0, SPELLFLYOUT_DEFAULT_SPACING)
         else
             actionButton:SetPoint("BOTTOM", button.CurrentAction, "TOP", 0, SPELLFLYOUT_INITIAL_SPACING)
         end
-    elseif button.direction == "DOWN" then
+    elseif button.bar.db.direction == "DOWN" then
         if previousButton then
             actionButton:SetPoint("TOP", previousButton, "BOTTOM", 0, -SPELLFLYOUT_DEFAULT_SPACING)
         else
             actionButton:SetPoint("TOP", button.CurrentAction, "BOTTOM", 0, -SPELLFLYOUT_INITIAL_SPACING)
         end
-    elseif button.direction == "LEFT" then
+    elseif button.bar.db.direction == "LEFT" then
         if previousButton then
             actionButton:SetPoint("RIGHT", previousButton, "LEFT", -SPELLFLYOUT_DEFAULT_SPACING, 0)
         else
             actionButton:SetPoint("RIGHT", button.CurrentAction, "LEFT", -SPELLFLYOUT_INITIAL_SPACING, 0)
         end
-    elseif button.direction == "RIGHT" then
+    elseif button.bar.db.direction == "RIGHT" then
         if previousButton then
             actionButton:SetPoint("LEFT", previousButton, "RIGHT", SPELLFLYOUT_DEFAULT_SPACING, 0)
         else
@@ -512,6 +511,10 @@ function Addon:CreateFlyoutButtonChild(button, action, index, previousButton)
 end
 
 function Addon:UpdateFlyoutButtonChild(button, child)
+    if child ~= button.CurrentAction then
+        child:SetSize(button.childSize, button.childSize)
+    end
+
     if child.spellID then
         child.isUsable, child.notEnoughMana = IsUsableSpell(child.spellID)
 

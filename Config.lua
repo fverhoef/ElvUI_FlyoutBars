@@ -16,13 +16,27 @@ P[addonName] = {
             inheritGlobalFade = false,
             backdrop = false,
             backdropSpacing = 2,
+            direction = "UP",
             buttons = {
                 -- Teleports
-                {defaultActionIndex = 1, showOnlyMaxRank = false, name = L["Teleports"], actions = Addon.database.Mage.Teleports},
+                {
+                    enabled = true,
+                    defaultActionIndex = 1,
+                    showOnlyMaxRank = false,
+                    name = L["Teleports"],
+                    actions = Addon.database.Mage.Teleports
+                },
                 -- Portals
-                {defaultActionIndex = 1, showOnlyMaxRank = false, name = L["Portals"], actions = Addon.database.Mage.Portals},
+                {
+                    enabled = true,
+                    defaultActionIndex = 1,
+                    showOnlyMaxRank = false,
+                    name = L["Portals"],
+                    actions = Addon.database.Mage.Portals
+                },
                 -- Conjure Food
                 {
+                    enabled = true,
                     defaultActionIndex = #Addon.database.Mage.ConjureFood,
                     showOnlyMaxRank = false,
                     name = L["Conjure Food"],
@@ -30,6 +44,7 @@ P[addonName] = {
                 },
                 -- Conjure Water
                 {
+                    enabled = true,
                     defaultActionIndex = #Addon.database.Mage.ConjureWater,
                     showOnlyMaxRank = false,
                     name = L["Conjure Water"],
@@ -37,6 +52,7 @@ P[addonName] = {
                 },
                 -- Conjure Gem
                 {
+                    enabled = true,
                     defaultActionIndex = #Addon.database.Mage.ConjureGem,
                     showOnlyMaxRank = false,
                     name = L["Conjure Gems"],
@@ -44,28 +60,11 @@ P[addonName] = {
                 },
                 -- Armors
                 {
+                    enabled = true,
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
                     name = L["Armors"],
-                    actions = {
-                        -- Frost Armor
-                        168,
-                        7300,
-                        7301,
-                        -- Ice Armor
-                        7302,
-                        7320,
-                        10219,
-                        10220,
-                        27124,
-                        -- Mage Armor
-                        6117,
-                        22782,
-                        22783,
-                        27125,
-                        -- Molten Armor
-                        30482
-                    }
+                    actions = Addon.database.Mage.Armors
                 }
             }
         },
@@ -78,32 +77,38 @@ P[addonName] = {
             inheritGlobalFade = false,
             backdrop = false,
             backdropSpacing = 2,
+            direction = "UP",
             buttons = {
                 {
+                    enabled = true,
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
                     name = L["Fire Totems"],
                     actions = Addon.database.Shaman.FireTotems
                 },
                 {
+                    enabled = true,
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
                     name = L["Earth Totems"],
                     actions = Addon.database.Shaman.EarthTotems
                 },
                 {
+                    enabled = true,
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
                     name = L["Water Totems"],
                     actions = Addon.database.Shaman.WaterTotems
                 },
                 {
+                    enabled = true,
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
                     name = L["Air Totems"],
                     actions = Addon.database.Shaman.AirTotems
                 },
                 {
+                    enabled = true,
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
                     name = L["Weapon Enchants"],
@@ -130,6 +135,7 @@ local function CreateBarOptions(config, name, order)
                 order = 1,
                 type = "toggle",
                 name = L["Enabled"],
+                desc = L["Whether or not this bar is enabled."],
                 get = function(info)
                     return config.enabled
                 end,
@@ -198,6 +204,7 @@ local function CreateBarOptions(config, name, order)
                 order = 31,
                 type = "toggle",
                 name = L["Backdrop"],
+                desc = L["Whether or not this bar's backdrop is enabled."],
                 get = function(info)
                     return config.backdrop
                 end,
@@ -249,6 +256,19 @@ local function CreateBarOptions(config, name, order)
             name = buttonTitle,
             args = {
                 header = {type = "header", order = 1, name = buttonTitle},
+                enabled = {
+                    order = 2,
+                    type = "toggle",
+                    name = L["Enabled"],
+                    desc = L["Whether or not this button is enabled."],
+                    get = function(info)
+                        return button.enabled
+                    end,
+                    set = function(info, value)
+                        button.enabled = value
+                        Addon:Update()
+                    end
+                },
                 name = {
                     order = 10,
                     type = "input",
