@@ -121,7 +121,6 @@ function Addon:CreateFlyoutButton(name, bar, config)
     button.bar = bar
     button.config = config
     button.defaultAction = defaultAction
-    button.showOnlyMaxRank = config.showOnlyMaxRank or false
     button.size = button.bar.db.buttonSize
     button.childSize = button.bar.db.buttonSize - 8
     button.childButtons = {}
@@ -269,32 +268,32 @@ function Addon:UpdateFlyoutButton(button)
         button.count = 0
 
         -- generate buttons
-        local previousButton
         for i, action in next, button.config.actions do
-            local actionButton = button.childButtons[action]
+            local child = button.childButtons[action]
 
             -- generate a new button if known and not generated yet
             local isKnown = IsSpellKnown(action)
             if isKnown then
-                local shouldBeVisible = not button.showOnlyMaxRank or (button.showOnlyMaxRank and Addon:IsMaxKnownRank(action))
-                if not actionButton and shouldBeVisible then
-                    actionButton = Addon:CreateFlyoutButtonChild(button, action, i, previousButton)
-                    button.childButtons[action] = actionButton
-                elseif actionButton and not shouldBeVisible then
-                    actionButton:Hide()
-                    actionButton = nil
+                local shouldBeVisible = not button.config.showOnlyMaxRank or
+                                            (button.config.showOnlyMaxRank and Addon:IsMaxKnownRank(action))
+                if not child and shouldBeVisible then
+                    child = Addon:CreateFlyoutButtonChild(button, action, i)
+                    button.childButtons[action] = child
+                elseif child and not shouldBeVisible then
+                    child:SetParent(E.HiddenFrame)
+                    child:Hide()
+                    child = nil
                     button.childButtons[action] = nil
                 end
             end
 
-            if actionButton then
+            if child then
                 button.count = button.count + 1
-                previousButton = actionButton
             end
         end
 
         -- if the default is not max rank, set it to max rank
-        if button.showOnlyMaxRank then
+        if button.config.showOnlyMaxRank then
             local maxRank = Addon:GetMaxKnownRank(defaultAction)
             if maxRank then
                 defaultAction = maxRank
@@ -331,8 +330,10 @@ function Addon:UpdateFlyoutButton(button)
     if button.count > 0 and button.config.enabled then
         button:Show()
 
+        local previousButton
         for i, child in next, button.childButtons do
-            Addon:UpdateFlyoutButtonChild(button, child)
+            Addon:UpdateFlyoutButtonChild(button, child, previousButton)
+            previousButton = child
         end
     else
         button:Hide()
@@ -424,7 +425,7 @@ function Addon:UpdateFlyoutButtonBackground(button)
     end
 end
 
-function Addon:CreateFlyoutButtonChild(button, action, index, previousButton)
+function Addon:CreateFlyoutButtonChild(button, action, index)
     local spellName, _, icon = GetSpellInfo(action)
 
     local actionButton = CreateFrame("CheckButton", button:GetName() .. "_Button_" .. index, button,
@@ -445,33 +446,6 @@ function Addon:CreateFlyoutButtonChild(button, action, index, previousButton)
         Addon.masqueGroup:AddButton(actionButton)
     else
         AB:StyleButton(actionButton)
-    end
-
-    actionButton:ClearAllPoints()
-    if button.bar.db.direction == "UP" then
-        if previousButton then
-            actionButton:SetPoint("BOTTOM", previousButton, "TOP", 0, SPELLFLYOUT_DEFAULT_SPACING)
-        else
-            actionButton:SetPoint("BOTTOM", button.CurrentAction, "TOP", 0, SPELLFLYOUT_INITIAL_SPACING)
-        end
-    elseif button.bar.db.direction == "DOWN" then
-        if previousButton then
-            actionButton:SetPoint("TOP", previousButton, "BOTTOM", 0, -SPELLFLYOUT_DEFAULT_SPACING)
-        else
-            actionButton:SetPoint("TOP", button.CurrentAction, "BOTTOM", 0, -SPELLFLYOUT_INITIAL_SPACING)
-        end
-    elseif button.bar.db.direction == "LEFT" then
-        if previousButton then
-            actionButton:SetPoint("RIGHT", previousButton, "LEFT", -SPELLFLYOUT_DEFAULT_SPACING, 0)
-        else
-            actionButton:SetPoint("RIGHT", button.CurrentAction, "LEFT", -SPELLFLYOUT_INITIAL_SPACING, 0)
-        end
-    elseif button.bar.db.direction == "RIGHT" then
-        if previousButton then
-            actionButton:SetPoint("LEFT", previousButton, "RIGHT", SPELLFLYOUT_DEFAULT_SPACING, 0)
-        else
-            actionButton:SetPoint("LEFT", button.CurrentAction, "RIGHT", SPELLFLYOUT_INITIAL_SPACING, 0)
-        end
     end
 
     actionButton:HookScript("OnEnter", function()
@@ -510,9 +484,36 @@ function Addon:CreateFlyoutButtonChild(button, action, index, previousButton)
     return actionButton
 end
 
-function Addon:UpdateFlyoutButtonChild(button, child)
-    if child ~= button.CurrentAction then
+function Addon:UpdateFlyoutButtonChild(button, child, previousButton)
+    if child ~= button.CurrentAction and not InCombatLockdown() then
         child:SetSize(button.childSize, button.childSize)
+
+        child:ClearAllPoints()
+        if button.bar.db.direction == "UP" then
+            if previousButton then
+                child:SetPoint("BOTTOM", previousButton, "TOP", 0, SPELLFLYOUT_DEFAULT_SPACING)
+            else
+                child:SetPoint("BOTTOM", button.CurrentAction, "TOP", 0, SPELLFLYOUT_INITIAL_SPACING)
+            end
+        elseif button.bar.db.direction == "DOWN" then
+            if previousButton then
+                child:SetPoint("TOP", previousButton, "BOTTOM", 0, -SPELLFLYOUT_DEFAULT_SPACING)
+            else
+                child:SetPoint("TOP", button.CurrentAction, "BOTTOM", 0, -SPELLFLYOUT_INITIAL_SPACING)
+            end
+        elseif button.bar.db.direction == "LEFT" then
+            if previousButton then
+                child:SetPoint("RIGHT", previousButton, "LEFT", -SPELLFLYOUT_DEFAULT_SPACING, 0)
+            else
+                child:SetPoint("RIGHT", button.CurrentAction, "LEFT", -SPELLFLYOUT_INITIAL_SPACING, 0)
+            end
+        elseif button.bar.db.direction == "RIGHT" then
+            if previousButton then
+                child:SetPoint("LEFT", previousButton, "RIGHT", SPELLFLYOUT_DEFAULT_SPACING, 0)
+            else
+                child:SetPoint("LEFT", button.CurrentAction, "RIGHT", SPELLFLYOUT_INITIAL_SPACING, 0)
+            end
+        end
     end
 
     if child.spellID then

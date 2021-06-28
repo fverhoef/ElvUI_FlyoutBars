@@ -303,7 +303,9 @@ local function CreateBarOptions(config, name, order)
                     name = L["Default Action Index"],
                     desc = L["The default action to show when the button is collapsed."],
                     min = 1,
-                    max = #button.actions,
+                    max = function()
+                        return Addon:GetKnownActionCount(button.actions, button.showOnlyMaxRank)
+                    end,
                     step = 1,
                     get = function(info)
                         return button.defaultActionIndex

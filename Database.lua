@@ -209,6 +209,17 @@ function Addon:IsMaxKnownRank(spellId)
     return Addon:GetMaxKnownRank(spellId) == spellId
 end
 
+function Addon:GetKnownActionCount(actions, onlyMaxRank)
+    local known = 0
+    for i, action in ipairs(actions) do
+        if IsSpellKnown(action) and (not onlyMaxRank or Addon:IsMaxKnownRank(action)) then
+            known = known + 1
+        end
+    end
+
+    return known
+end
+
 function Addon:FindTotem(totemName)
     local totemId
 
