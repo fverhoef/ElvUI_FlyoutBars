@@ -7,42 +7,46 @@ if E.db[addonName] == nil then
 end
 P[addonName] = {
     bars = {
-        ["MageBar"] = {
+        ["Mage Bar"] = {
             enabled = true,
             class = "MAGE",
             buttonSize = 32,
-            buttonSpacing = 3,
+            buttonSpacing = 2,
             mouseover = true,
             inheritGlobalFade = false,
-            backdrop = true,
-            backdropSpacing = 3,
+            backdrop = false,
+            backdropSpacing = 2,
             buttons = {
                 -- Teleports
-                {defaultActionIndex = 1, showOnlyMaxRank = false, actions = Addon.database.Mage.Teleports},
+                {defaultActionIndex = 1, showOnlyMaxRank = false, name = L["Teleports"], actions = Addon.database.Mage.Teleports},
                 -- Portals
-                {defaultActionIndex = 1, showOnlyMaxRank = false, actions = Addon.database.Mage.Portals},
+                {defaultActionIndex = 1, showOnlyMaxRank = false, name = L["Portals"], actions = Addon.database.Mage.Portals},
                 -- Conjure Food
                 {
                     defaultActionIndex = #Addon.database.Mage.ConjureFood,
                     showOnlyMaxRank = false,
+                    name = L["Conjure Food"],
                     actions = Addon.database.Mage.ConjureFood
                 },
                 -- Conjure Water
                 {
                     defaultActionIndex = #Addon.database.Mage.ConjureWater,
                     showOnlyMaxRank = false,
+                    name = L["Conjure Water"],
                     actions = Addon.database.Mage.ConjureWater
                 },
                 -- Conjure Gem
                 {
                     defaultActionIndex = #Addon.database.Mage.ConjureGem,
                     showOnlyMaxRank = false,
+                    name = L["Conjure Gems"],
                     actions = Addon.database.Mage.ConjureGem
                 },
                 -- Armors
                 {
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
+                    name = L["Armors"],
                     actions = {
                         -- Frost Armor
                         168,
@@ -65,49 +69,45 @@ P[addonName] = {
                 }
             }
         },
-        ["ShamanBar"] = {
+        ["Shaman Bar"] = {
             enabled = true,
             class = "SHAMAN",
             buttonSize = 32,
-            buttonSpacing = 3,
+            buttonSpacing = 2,
             mouseover = true,
             inheritGlobalFade = false,
-            backdrop = true,
-            backdropSpacing = 3,
+            backdrop = false,
+            backdropSpacing = 2,
             buttons = {
-                -- Fire Totems
                 {
                     defaultActionIndex = 1,
                     showOnlyMaxRank = true,
-                    actions = {
-                        -- Fire Nova Totem
-                        1535,
-                        8498,
-                        8499,
-                        11314,
-                        11315,
-                        -- Magma Totem
-                        8190,
-                        10585,
-                        10586,
-                        10587,
-                        -- Searing Totem
-                        3599,
-                        6363,
-                        6364,
-                        6365,
-                        10437,
-                        10438,
-                        -- Flametongue Totem
-                        8227,
-                        8249,
-                        10526,
-                        16387,
-                        -- Frost Resistance Totem
-                        8181,
-                        10478,
-                        10479
-                    }
+                    name = L["Fire Totems"],
+                    actions = Addon.database.Shaman.FireTotems
+                },
+                {
+                    defaultActionIndex = 1,
+                    showOnlyMaxRank = true,
+                    name = L["Earth Totems"],
+                    actions = Addon.database.Shaman.EarthTotems
+                },
+                {
+                    defaultActionIndex = 1,
+                    showOnlyMaxRank = true,
+                    name = L["Water Totems"],
+                    actions = Addon.database.Shaman.WaterTotems
+                },
+                {
+                    defaultActionIndex = 1,
+                    showOnlyMaxRank = true,
+                    name = L["Air Totems"],
+                    actions = Addon.database.Shaman.AirTotems
+                },
+                {
+                    defaultActionIndex = 1,
+                    showOnlyMaxRank = true,
+                    name = L["Weapon Enchants"],
+                    actions = Addon.database.Shaman.WeaponEnchants
                 }
             }
         }
@@ -143,6 +143,7 @@ local function CreateBarOptions(config, name, order)
                 order = 10,
                 type = "select",
                 name = L["Class Restriction"],
+                desc = L["This bar will only show for the selected class. Set to 'None' if it should always be shown."],
                 values = CLASS_RESTRICTIONS,
                 get = function()
                     for key, val in pairs(CLASS_RESTRICTIONS) do
@@ -226,6 +227,7 @@ local function CreateBarOptions(config, name, order)
                 order = 41,
                 type = "toggle",
                 name = L["Inherit Global Fade"],
+                desc = L["Whether this bar should inherit the global ElvUI fade state."],
                 get = function(info)
                     return config.inheritGlobalFade
                 end,
@@ -240,16 +242,32 @@ local function CreateBarOptions(config, name, order)
 
     for i, button in ipairs(config.buttons) do
         local buttonName = L["Button"] .. " " .. i
+        local buttonTitle = buttonName .. ((button.name and (" (" .. button.name .. ")")) or "")
         barOptions.args[buttonName] = {
             order = 50 + i,
             type = "group",
-            name = buttonName,
+            name = buttonTitle,
             args = {
-                header = {type = "header", order = 1, name = buttonName},
+                header = {type = "header", order = 1, name = buttonTitle},
+                name = {
+                    order = 10,
+                    type = "input",
+                    name = L["Name"],
+                    desc = L["The name of the button."],
+                    width = "full",
+                    get = function(info)
+                        return button.name
+                    end,
+                    set = function(info, value)
+                        button.name = value
+                        Addon:Update()
+                    end
+                },
                 showOnlyMaxRank = {
                     order = 11,
                     type = "toggle",
                     name = L["Show Only Max Rank"],
+                    desc = L["Whether this button will only show the max rank of each spell."],
                     width = "full",
                     get = function(info)
                         return button.showOnlyMaxRank
@@ -263,6 +281,7 @@ local function CreateBarOptions(config, name, order)
                     order = 12,
                     type = "range",
                     name = L["Default Action Index"],
+                    desc = L["The default action to show when the button is collapsed."],
                     min = 1,
                     max = #button.actions,
                     step = 1,
