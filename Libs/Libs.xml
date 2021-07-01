@@ -1,3 +1,4 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="LibClassicSpellActionCount-1.0/LibClassicSpellActionCount-1.0.lua"/>
+    <Script file="LibSpellCache-1.0/LibSpellCache-1.0.lua"/>
 </Ui>

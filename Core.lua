@@ -8,7 +8,18 @@ local SPELLFLYOUT_DEFAULT_SPACING = 0
 local SPELLFLYOUT_INITIAL_SPACING = 0
 local SPELLFLYOUT_FINAL_SPACING = 4
 
-function Addon:CreateMover(frame, name)
+local function FixNormalTextureSize(button)
+    local normalTexture = button:GetNormalTexture()
+    if normalTexture then
+        local texturePath = normalTexture:GetTexture()
+        if texturePath == "Interface\\Buttons\\UI-Quickslot2" then
+            local size = 66 * (button:GetWidth() / 36)
+            normalTexture:SetSize(size, size)
+        end
+    end
+end
+
+local function CreateMover(frame, name)
     E:CreateMover(frame, name, name, nil, nil, nil, "ALL,ACTIONBARS", nil, "actionbars")
 
     if frame.db.inheritGlobalFade then
@@ -48,7 +59,7 @@ function Addon:CreateFlyoutBar(name, config)
                     if totemId then
                         local actionButton = button.childButtons[totemId]
                         if actionButton then
-                            button.defaultAction = totemId
+                            -- button.defaultAction = totemId
                         end
                     end
                 end
@@ -58,7 +69,7 @@ function Addon:CreateFlyoutBar(name, config)
         Addon:UpdateFlyoutBar(bar)
     end)
 
-    Addon:CreateMover(bar, addonName .. "_" .. name)
+    CreateMover(bar, addonName .. "_" .. name)
     Addon:UpdateFlyoutBar(bar)
 
     return bar
@@ -114,13 +125,10 @@ function Addon:UpdateFlyoutBar(bar)
 end
 
 function Addon:CreateFlyoutButton(name, bar, config)
-    local defaultAction = config.actions[config.defaultActionIndex or 1]
-
     -- create parent frame
     local button = CreateFrame("Frame", "FlyoutButton_" .. name, bar, "SecureHandlerStateTemplate")
     button.bar = bar
     button.config = config
-    button.defaultAction = defaultAction
     button.size = button.bar.db.buttonSize
     button.childSize = button.bar.db.buttonSize - 8
     button.childButtons = {}
@@ -199,9 +207,7 @@ function Addon:CreateFlyoutButton(name, bar, config)
         button.CurrentAction:SetChecked(false)
     end)
 
-    Addon:FixNormalTextureSize(button.CurrentAction)
-
-    button.childButtons[0] = button.CurrentAction
+    FixNormalTextureSize(button.CurrentAction)
 
     -- Add a duration spiral
     button.CurrentAction.Duration = CreateFrame("Cooldown", nil, button.CurrentAction, "CooldownFrameTemplate")
@@ -263,14 +269,12 @@ function Addon:CreateFlyoutButton(name, bar, config)
 end
 
 function Addon:UpdateFlyoutButton(button)
-    local defaultAction = button.defaultAction
-
     button.isOpen = button.CurrentAction:GetAttribute("open") == 1
 
     if not InCombatLockdown() then
         button.count = 0
 
-        -- generate buttons
+        -- generate/position child buttons
         local previousButton
         for i, action in ipairs(button.config.actions) do
             local child = button.childButtons[action]
@@ -291,22 +295,28 @@ function Addon:UpdateFlyoutButton(button)
             end
         end
 
-        -- if the default is not max rank, set it to max rank
-        if button.config.showOnlyMaxRank then
-            defaultAction = Addon:GetMaxKnownRank(defaultAction) or defaultAction
-        end
-
-        -- if the default is an unknown spell, try to find one that we do know
-        if not IsSpellKnown(defaultAction) then
-            for i, action in next, button.config.actions do
-                if IsSpellKnown(action) then
-                    defaultAction = action
+        for i, child in next, button.childButtons do
+            -- check if child is still in use
+            local spellID = child:GetAttribute("spell")
+            local found = false
+            for j, action in ipairs(button.config.actions) do
+                if action == spellID then
+                    found = true
+                    break
                 end
+            end
+
+            -- hide buttons that are not in use any more; else, update it
+            if not found then
+                child:SetAttribute("hidden", 1)
+                child:Hide()
+            else
+                Addon:UpdateFlyoutButtonChild(child)
             end
         end
 
-        Addon:SetFlyoutCurrentAction(button, defaultAction)
-        button.defaultAction = defaultAction
+        Addon:SetFlyoutCurrentAction(button, button.config.defaultAction)
+        Addon:UpdateFlyoutButtonChild(button.CurrentAction)
     end
 
     button.size = button.bar.db.buttonSize
@@ -317,12 +327,6 @@ function Addon:UpdateFlyoutButton(button)
 
     if button.count > 0 and button.config.enabled then
         button:Show()
-
-        local previousButton
-        for i, child in next, button.childButtons do
-            Addon:UpdateFlyoutButtonChild(button, child, previousButton)
-            previousButton = child
-        end
     else
         button:Hide()
     end
@@ -449,10 +453,16 @@ function Addon:CreateFlyoutButtonChild(button, action, index)
     child:HookScript("OnHide", function()
         Addon:UpdateFlyoutButtonBackground(button)
     end)
-    child:HookScript("OnClick", function()
+    child:HookScript("OnClick", function(self, mouseButton)
         child:SetChecked(false)
         if not InCombatLockdown() then
-            button.defaultAction = action
+            local mode = button.config.defaultActionUpdateMode
+            if (mode == Addon.UPDATE_DEFAULT_MODE.ANY_CLICK) or
+                (mouseButton == "LeftButton" and (mode == Addon.UPDATE_DEFAULT_MODE.LEFT_CLICK)) or
+                (mouseButton == "RightButton" and (mode == Addon.UPDATE_DEFAULT_MODE.RIGHT_CLICK)) or
+                (mouseButton == "MiddleButton" and (mode == Addon.UPDATE_DEFAULT_MODE.MIDDLE_CLICK)) then
+                Addon:SetFlyoutCurrentAction(button, action)
+            end
             Addon:UpdateFlyoutButton(button)
         end
     end)
@@ -467,12 +477,12 @@ function Addon:CreateFlyoutButtonChild(button, action, index)
         end	    
     ]])
 
-    Addon:FixNormalTextureSize(child)
+    FixNormalTextureSize(child)
 
     return child
 end
 
-function Addon:UpdateFlyoutButtonChild(button, child, previousButton)
+function Addon:UpdateFlyoutButtonChild(child)
     local spellID = child:GetAttribute("spell")
     if spellID then
         child.isUsable, child.notEnoughMana = IsUsableSpell(spellID)
@@ -549,22 +559,35 @@ function Addon:PositionFlyoutButtonChild(button, child, previousButton)
 end
 
 function Addon:SetFlyoutCurrentAction(button, action)
+    local actionFound = false
+    for _, id in ipairs(button.config.actions) do
+        if action == id then
+            actionFound = true
+        end
+    end
+
+    if not actionFound then
+        action = button.config.defaultAction or Addon:GetMaxKnownRank(button.config.actions[1]) or button.config.actions[1]
+    end
+
+    if button.config.showOnlyMaxRank then
+        action = Addon:GetMaxKnownRank(action) or action
+    end
+
+    if not IsSpellKnown(action) then
+        for _, id in next, button.config.actions do
+            if IsSpellKnown(id) then
+                action = id
+            end
+        end
+    end
+
     if IsSpellKnown(action) then
         local icon = select(3, GetSpellInfo(action))
         button.CurrentAction.icon:SetTexture(icon)
         button.CurrentAction.icon:Show()
 
         button.CurrentAction:SetAttribute("spell", action)
-    end
-end
-
-function Addon:FixNormalTextureSize(button)
-    local normalTexture = button:GetNormalTexture()
-    if normalTexture then
-        local texturePath = normalTexture:GetTexture()
-        if texturePath == "Interface\\Buttons\\UI-Quickslot2" then
-            local size = 66 * (button:GetWidth() / 36)
-            normalTexture:SetSize(size, size)
-        end
+        button.config.defaultAction = action
     end
 end
