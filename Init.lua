@@ -32,7 +32,26 @@ end
 
 function Addon:Update()
     for _, bar in pairs(Addon.bars) do
-        Addon:UpdateFlyoutBar(bar)
+        local found = false
+        for name, _ in pairs(E.db[addonName].bars) do
+            if bar.name == name then
+                found = true
+                break
+            end
+        end
+
+        if found then
+            Addon:UpdateFlyoutBar(bar)
+        else
+            bar:Hide()
+            Addon.bars[bar.name] = nil
+        end
+    end
+
+    for name, config in pairs(E.db[addonName].bars) do
+        if not Addon.bars[name] then
+            Addon.bars[name] = Addon:CreateFlyoutBar(name, config)
+        end
     end
 end
 

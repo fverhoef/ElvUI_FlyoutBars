@@ -39,8 +39,9 @@ function Addon:CreateFlyoutBar(name, config)
     bar:CreateBackdrop("Transparent")
     bar.db = config
     bar.buttons = {}
+    bar.name = name
     for i, button in ipairs(config.buttons) do
-        bar.buttons[i] = Addon:CreateFlyoutButton("Teleports", bar, button)
+        bar.buttons[i] = Addon:CreateFlyoutButton(button.name, bar, button)
     end
 
     bar:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -88,11 +89,43 @@ function Addon:UpdateFlyoutBar(bar)
         bar:Show()
     end
 
+    -- remove deleted buttons
+    for i, button in ipairs(bar.buttons) do
+        local found = false
+        for _, buttonConfig in ipairs(bar.db.buttons) do
+            if button.config == buttonConfig then
+                found = true
+                break
+            end
+        end
+
+        if not found then
+            button:Hide()
+            table.remove(bar.buttons, i)
+        end
+    end
+
+    -- create newly added buttons
+    for i, buttonConfig in ipairs(bar.db.buttons) do
+        local found = false
+        for _, button in ipairs(bar.buttons) do
+            if button.config == buttonConfig then
+                found = true
+                break
+            end
+        end
+
+        if not found then
+            table.insert(bar.buttons, i, Addon:CreateFlyoutButton(buttonConfig.name, bar, buttonConfig))
+        end
+    end
+
+    -- update buttons
     local spacing = bar.db.backdrop and bar.db.backdropSpacing
     local visibleButtonCount = 0
     local lastVisibleButton
     local buttonList = {}
-    for i, button in next, bar.buttons do
+    for i, button in ipairs(bar.buttons) do
         Addon:UpdateFlyoutButton(button)
 
         if button:IsVisible() then
@@ -574,7 +607,7 @@ function Addon:SetFlyoutCurrentAction(button, action)
         action = Addon:GetMaxKnownRank(action) or action
     end
 
-    if not IsSpellKnown(action) then
+    if action and not IsSpellKnown(action) then
         for _, id in next, button.config.actions do
             if IsSpellKnown(id) then
                 action = id
@@ -582,7 +615,7 @@ function Addon:SetFlyoutCurrentAction(button, action)
         end
     end
 
-    if IsSpellKnown(action) then
+    if action and IsSpellKnown(action) then
         local icon = select(3, GetSpellInfo(action))
         button.CurrentAction.icon:SetTexture(icon)
         button.CurrentAction.icon:Show()
