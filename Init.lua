@@ -24,33 +24,35 @@ function Addon:Initialize()
     end
 
     Addon:RegisterEvent("PLAYER_ENTERING_WORLD", Addon.Update)
-    Addon:SecureHook("MultiActionBar_Update", Addon.Update)
-    Addon:SecureHook("MainMenuBar_UpdateExperienceBars", Addon.Update)
+    Addon:SecureHook("MultiActionBar_Update", Addon.UpdateChildButtons)
+    Addon:SecureHook("MainMenuBar_UpdateExperienceBars", Addon.UpdateChildButtons)
 
     Addon:Update()
 end
 
 function Addon:Update()
-    for _, bar in pairs(Addon.bars) do
-        local found = false
-        for name, _ in pairs(E.db[addonName].bars) do
-            if bar.name == name then
-                found = true
-                break
-            end
-        end
-
-        if found then
+    for name, bar in pairs(Addon.bars) do
+        if E.db[addonName].bars[name] then
             Addon:UpdateFlyoutBar(bar)
         else
             bar:Hide()
-            Addon.bars[bar.name] = nil
+            Addon.bars[name] = nil
         end
     end
 
     for name, config in pairs(E.db[addonName].bars) do
         if not Addon.bars[name] then
             Addon.bars[name] = Addon:CreateFlyoutBar(name, config)
+        end
+    end
+end
+
+function Addon:UpdateChildButtons()
+    for _, bar in pairs(Addon.bars) do
+        for _, button in ipairs(bar.buttons) do
+            for _, child in ipairs(button.childButtons) do
+                Addon:UpdateFlyoutButtonChild(child)
+            end
         end
     end
 end

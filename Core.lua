@@ -295,7 +295,9 @@ function Addon:CreateFlyoutButton(name, bar, config)
     button:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
     button:SetScript("OnEvent", function(self, event)
-        Addon:UpdateFlyoutButton(button)
+        for _, child in ipairs(button.childButtons) do
+            Addon:UpdateFlyoutButtonChild(child)
+        end
     end)
 
     return button
