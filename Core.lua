@@ -44,9 +44,9 @@ function Addon:CreateFlyoutBar(name, config)
         bar.buttons[i] = Addon:CreateFlyoutButton(button.name, bar, button)
     end
 
-    bar:RegisterEvent("PLAYER_ENTERING_WORLD")
     bar:RegisterEvent("LEARNED_SPELL_IN_TAB")
     bar:RegisterEvent("PLAYER_TOTEM_UPDATE")
+    bar:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
     bar:HookScript("OnEvent", function(self, event)
         if event == "PLAYER_TOTEM_UPDATE" then
             for index = 1, _G.MAX_TOTEMS do
@@ -55,7 +55,7 @@ function Addon:CreateFlyoutBar(name, config)
                 local haveTotem, totemName, start, duration, icon = GetTotemInfo(index)
                 if (haveTotem and duration > 0) then
                     -- TODO: show totem duration in a status bar instead?
-                    button.CurrentAction.Duration:SetCooldown(start, duration)
+                    -- button.CurrentAction.Duration:SetCooldown(start, duration)
                     local totemId = Addon:FindTotem(totemName)
                     if totemId then
                         local actionButton = button.childButtons[totemId]
@@ -65,9 +65,16 @@ function Addon:CreateFlyoutBar(name, config)
                     end
                 end
             end
+        elseif event == "ACTIONBAR_UPDATE_USABLE" then
+            for i, button in ipairs(bar.buttons) do
+                button.CurrentAction:UpdateConfig()
+                for j, child in next, button.childButtons do
+                    child:UpdateConfig()
+                end
+            end
+        elseif event == "LEARNED_SPELL_IN_TAB" then
+            Addon:UpdateFlyoutBar(bar)
         end
-
-        Addon:UpdateFlyoutBar(bar)
     end)
 
     CreateMover(bar, addonName .. "_" .. name)
@@ -171,14 +178,13 @@ function Addon:CreateFlyoutButton(name, bar, config)
     button:SetFrameLevel(1)
 
     -- Create secure open/close functions (needed for combat execution)
-    button:Execute([[open = [=[
-            local popups = newtable(self:GetChildren())
-            for i, button in ipairs(popups) do
+    button:Execute([[open = [=[        
+            self:SetAttribute("open", 1)
+            local childButtons = newtable(self:GetChildren())
+            for i, button in ipairs(childButtons) do
                 local index = button:GetAttribute("index")
                 local hidden = button:GetAttribute("hidden")
-                if index == 0 then
-                    button:SetAttribute("open", 1)
-                elseif hidden == 1 then
+                if hidden == 1 then
                     button:Hide()
                 else
                     button:Show()
@@ -186,27 +192,22 @@ function Addon:CreateFlyoutButton(name, bar, config)
             end
         ]=] ]])
     button:Execute([[close = [=[
-            local popups = newtable(self:GetChildren())
-            for i, button in pairs(popups) do
+            self:SetAttribute("open", 0)
+            local childButtons = newtable(self:GetChildren())
+            for i, button in pairs(childButtons) do
                 local index = button:GetAttribute("index")
-                if index == 0 then
-                    button:SetAttribute("open", 0)
-                else
+                if index ~= 0 then
                     button:Hide()
                 end			
             end
         ]=] ]])
 
     -- Create a button for the current/default action
-    button.CurrentAction = CreateFrame("CheckButton", button:GetName() .. "_CurrentAction", button,
-                                       "SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate, SecureActionButtonTemplate, ActionButtonTemplate")
-    button.CurrentAction:EnableMouse(true)
+    button.CurrentAction = LAB:CreateButton(button:GetName() .. 0, button:GetName() .. "_CurrentAction", button)
     button.CurrentAction:SetPoint("BOTTOM", button, "BOTTOM", 0, 0)
     button.CurrentAction:SetSize(button.size, button.size)
     button.CurrentAction:SetFrameLevel(10)
     button.CurrentAction:SetAttribute("index", 0)
-    button.CurrentAction:SetAttribute("type", "spell")
-    button.CurrentAction:RegisterForClicks("AnyUp")
     button.CurrentAction:Show()
 
     if Addon.masqueGroup then
@@ -226,13 +227,10 @@ function Addon:CreateFlyoutButton(name, bar, config)
         ]])
 
     button.CurrentAction:HookScript("OnEnter", function()
-        GameTooltip:SetOwner(button.CurrentAction, "ANCHOR_LEFT")
-        GameTooltip:SetSpellByID(button.CurrentAction:GetAttribute("spell"), false, true)
         Addon:UpdateFlyoutButtonBackground(button)
         AB:Bar_OnEnter(bar)
     end)
     button.CurrentAction:HookScript("OnLeave", function()
-        GameTooltip:Hide()
         Addon:UpdateFlyoutButtonBackground(button)
         AB:Bar_OnLeave(bar)
     end)
@@ -240,22 +238,82 @@ function Addon:CreateFlyoutButton(name, bar, config)
         button.CurrentAction:SetChecked(false)
     end)
 
-    FixNormalTextureSize(button.CurrentAction)
+    Addon:CreateFlyoutButtonBackground(button)
+    Addon:UpdateFlyoutButton(button)
 
-    -- Add a duration spiral
-    button.CurrentAction.Duration = CreateFrame("Cooldown", nil, button.CurrentAction, "CooldownFrameTemplate")
-    button.CurrentAction.Duration:SetHideCountdownNumbers(true)
-    button.CurrentAction.Duration:SetAllPoints()
+    return button
+end
 
-    -- Create flyout border and arrow
+function Addon:UpdateFlyoutButton(button)
+    button.isOpen = button:GetAttribute("open") == 1
+
+    if not InCombatLockdown() then
+        button.count = 0
+
+        -- generate/position child buttons
+        local previousButton
+        for i, action in ipairs(button.config.actions) do
+            local child = button.childButtons[action]
+            if not child then
+                child = Addon:CreateFlyoutButtonChild(button, action, i)
+                button.childButtons[action] = child
+            end
+
+            local visible = (not button.config.showOnlyMaxRank and IsSpellKnown(action)) or
+                                (button.config.showOnlyMaxRank and Addon:IsMaxKnownRank(action))
+            child:SetAttribute("hidden", (not visible and 1) or 0)
+            child:SetShown(visible and button.isOpen)
+
+            if visible and IsSpellKnown(action) then
+                child:SetState(0, "spell", action)
+                button.count = button.count + 1
+                Addon:PositionFlyoutButtonChild(button, child, previousButton)
+                previousButton = child
+            end
+        end
+
+        for i, child in next, button.childButtons do
+            -- check if child is still in use
+            local spellID = child:GetAttribute("spell")
+            local found = false
+            for j, action in ipairs(button.config.actions) do
+                if action == spellID then
+                    found = true
+                    break
+                end
+            end
+
+            -- hide buttons that are not in use any more; else, update it
+            if not found then
+                child:SetAttribute("hidden", 1)
+                child:Hide()
+            end
+        end
+
+        Addon:SetFlyoutCurrentAction(button, button.config.defaultAction)
+    end
+
+    button.size = button.bar.db.buttonSize
+    button.childSize = button.bar.db.buttonSize - 8
+    button:SetSize(button.bar.db.buttonSize, button.bar.db.buttonSize)
+    button.CurrentAction:SetSize(button.bar.db.buttonSize, button.bar.db.buttonSize)
+    Addon:UpdateFlyoutButtonBackground(button)
+
+    if button.count > 0 and button.config.enabled then
+        button:Show()
+    else
+        button:Hide()
+    end
+end
+
+function Addon:CreateFlyoutButtonBackground(button)
     button.FlyoutArrowHolder = CreateFrame("Frame", nil, button.CurrentAction)
     button.FlyoutArrowHolder:SetPoint("CENTER", button.CurrentAction, "CENTER")
     button.FlyoutArrowHolder:SetFrameLevel(button.CurrentAction:GetFrameLevel() + 20)
     button.FlyoutArrow = button.FlyoutArrowHolder:CreateTexture(nil, "OVERLAY", "ActionBarFlyoutButton-ArrowUp")
     button.FlyoutArrow:SetPoint("CENTER", button.FlyoutArrowHolder, "CENTER")
 
-    -- create background for child buttons
-    button.FlyoutBackground = CreateFrame("Frame", "FlyoutButton_" .. name .. "_Background", button)
+    button.FlyoutBackground = CreateFrame("Frame", button:GetName() .. "_Background", button)
     button.FlyoutBackground:EnableMouse(true)
 
     button.FlyoutBackground.End = button.FlyoutBackground:CreateTexture(nil, "BACKGROUND")
@@ -278,97 +336,10 @@ function Addon:CreateFlyoutButton(name, bar, config)
     button.FlyoutBackground.Horizontal:SetVertexColor(0.5, 0.5, 0.5, 1)
     button.FlyoutBackground.Horizontal:SetSize(button.size, button.size)
     button.FlyoutBackground.Horizontal:Hide()
-
-    Addon:UpdateFlyoutButton(button)
-
-    -- TODO: check if any additional events need to be listened to here
-    button:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
-    button:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
-    button:RegisterEvent("PLAYER_ENTERING_WORLD")
-    button:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
-    button:RegisterEvent("UNIT_POWER_FREQUENT")
-    button:RegisterEvent("LOSS_OF_CONTROL_ADDED")
-    button:RegisterEvent("LOSS_OF_CONTROL_UPDATE")
-    button:RegisterEvent("SPELL_UPDATE_CHARGES")
-    button:RegisterEvent("SPELL_UPDATE_ICON")
-    button:RegisterEvent("BAG_UPDATE")
-    button:RegisterEvent("UNIT_INVENTORY_CHANGED")
-
-    button:SetScript("OnEvent", function(self, event)
-        for _, child in ipairs(button.childButtons) do
-            Addon:UpdateFlyoutButtonChild(child)
-        end
-    end)
-
-    return button
-end
-
-function Addon:UpdateFlyoutButton(button)
-    button.isOpen = button.CurrentAction:GetAttribute("open") == 1
-
-    if not InCombatLockdown() then
-        button.count = 0
-
-        -- generate/position child buttons
-        local previousButton
-        for i, action in ipairs(button.config.actions) do
-            local child = button.childButtons[action]
-            if not child then
-                child = Addon:CreateFlyoutButtonChild(button, action, i)
-                button.childButtons[action] = child
-            end
-
-            local visible = (not button.config.showOnlyMaxRank and IsSpellKnown(action)) or
-                                (button.config.showOnlyMaxRank and Addon:IsMaxKnownRank(action))
-            child:SetAttribute("hidden", (not visible and 1) or 0)
-            child:SetShown(visible and button.isOpen)
-
-            if visible then
-                button.count = button.count + 1
-                Addon:PositionFlyoutButtonChild(button, child, previousButton)
-                previousButton = child
-            end
-        end
-
-        for i, child in next, button.childButtons do
-            -- check if child is still in use
-            local spellID = child:GetAttribute("spell")
-            local found = false
-            for j, action in ipairs(button.config.actions) do
-                if action == spellID then
-                    found = true
-                    break
-                end
-            end
-
-            -- hide buttons that are not in use any more; else, update it
-            if not found then
-                child:SetAttribute("hidden", 1)
-                child:Hide()
-            else
-                Addon:UpdateFlyoutButtonChild(child)
-            end
-        end
-
-        Addon:SetFlyoutCurrentAction(button, button.config.defaultAction)
-        Addon:UpdateFlyoutButtonChild(button.CurrentAction)
-    end
-
-    button.size = button.bar.db.buttonSize
-    button.childSize = button.bar.db.buttonSize - 8
-    button:SetSize(button.bar.db.buttonSize, button.bar.db.buttonSize)
-    button.CurrentAction:SetSize(button.bar.db.buttonSize, button.bar.db.buttonSize)
-    Addon:UpdateFlyoutButtonBackground(button)
-
-    if button.count > 0 and button.config.enabled then
-        button:Show()
-    else
-        button:Hide()
-    end
 end
 
 function Addon:UpdateFlyoutButtonBackground(button)
-    button.isOpen = button.CurrentAction:GetAttribute("open") == 1
+    button.isOpen = button:GetAttribute("open") == 1
 
     local arrowDistance = button.isOpen and 5 or 2
     button.FlyoutArrow:Show()
@@ -453,20 +424,10 @@ function Addon:UpdateFlyoutButtonBackground(button)
 end
 
 function Addon:CreateFlyoutButtonChild(button, action, index)
-    local child = CreateFrame("CheckButton", button:GetName() .. "_Button_" .. index, button,
-                              "SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate, SecureActionButtonTemplate, ActionButtonTemplate")
-    child:EnableMouse(true)
+    local child = LAB:CreateButton(button:GetName() .. index, button:GetName() .. "_Button_" .. index, button)
     child:SetSize(button.childSize, button.childSize)
     child:SetFrameLevel(5)
-    child:RegisterForClicks("AnyUp")
     child:SetAttribute("index", index)
-    child:SetAttribute("type", "spell")
-    child:SetAttribute("spell", action)
-
-    local icon = select(3, GetSpellInfo(action))
-    child.icon:SetTexture(icon)
-    child.icon:Show()
-
     child:Hide()
 
     if Addon.masqueGroup then
@@ -476,13 +437,10 @@ function Addon:CreateFlyoutButtonChild(button, action, index)
     end
 
     child:HookScript("OnEnter", function()
-        GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-        GameTooltip:SetSpellByID(action, false, true)
         Addon:UpdateFlyoutButtonBackground(button)
         AB:Bar_OnEnter(button:GetParent())
     end)
     child:HookScript("OnLeave", function()
-        GameTooltip:Hide()
         AB:Bar_OnLeave(button:GetParent())
     end)
     child:HookScript("OnHide", function()
@@ -512,55 +470,7 @@ function Addon:CreateFlyoutButtonChild(button, action, index)
         end	    
     ]])
 
-    FixNormalTextureSize(child)
-
     return child
-end
-
-function Addon:UpdateFlyoutButtonChild(child)
-    local spellID = child:GetAttribute("spell")
-    if spellID then
-        child.isUsable, child.notEnoughMana = IsUsableSpell(spellID)
-
-        if child.isUsable and UnitOnTaxi("player") then
-            child.isUsable = false
-        end
-
-        if child.isUsable then
-            child.icon:SetVertexColor(1.0, 1.0, 1.0)
-        elseif child.notEnoughMana then
-            child.icon:SetVertexColor(0.5, 0.5, 1.0)
-        else
-            child.icon:SetVertexColor(0.4, 0.4, 0.4)
-        end
-
-        -- update charges
-        child.reagentCount = LibStub("LibClassicSpellActionCount-1.0"):GetSpellReagentCount(spellID)
-        if child.reagentCount ~= nil then
-            child.Count:SetText(child.reagentCount)
-        else
-            child.Count:SetText("")
-        end
-
-        -- update cooldown
-        local start, duration, enable, modRate = GetSpellCooldown(spellID)
-        local charges, maxCharges, chargeStart, chargeDuration, chargeModRate = GetSpellCharges(spellID)
-
-        if (child.cooldown.currentCooldownType ~= COOLDOWN_TYPE_NORMAL) then
-            child.cooldown:SetEdgeTexture("Interface\\Cooldown\\edge");
-            child.cooldown:SetSwipeColor(0, 0, 0);
-            child.cooldown:SetHideCountdownNumbers(false);
-            child.cooldown.currentCooldownType = COOLDOWN_TYPE_NORMAL;
-        end
-
-        if (charges and maxCharges and maxCharges > 1 and charges < maxCharges) then
-            StartChargeCooldown(child, chargeStart, chargeDuration, chargeModRate)
-        else
-            ClearChargeCooldown(child)
-        end
-
-        CooldownFrame_Set(child.cooldown, start, duration, enable, false, modRate)
-    end
 end
 
 function Addon:PositionFlyoutButtonChild(button, child, previousButton)
@@ -622,7 +532,7 @@ function Addon:SetFlyoutCurrentAction(button, action)
         button.CurrentAction.icon:SetTexture(icon)
         button.CurrentAction.icon:Show()
 
-        button.CurrentAction:SetAttribute("spell", action)
+        button.CurrentAction:SetState(0, "spell", action)
         button.config.defaultAction = action
     end
 end

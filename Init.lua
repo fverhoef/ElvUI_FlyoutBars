@@ -1,7 +1,6 @@
 local addonName, addonTable = ...
 local E, L, V, P, G = unpack(ElvUI) -- Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
 local EP = LibStub("LibElvUIPlugin-1.0")
-local LSM = LibStub("LibSharedMedia-3.0")
 local version = GetAddOnMetadata(addonName, "Version")
 
 local Addon = E:NewModule(addonName, "AceHook-3.0", "AceEvent-3.0", "AceTimer-3.0")
@@ -22,12 +21,6 @@ function Addon:Initialize()
     for name, config in pairs(E.db[addonName].bars) do
         Addon.bars[name] = Addon:CreateFlyoutBar(name, config)
     end
-
-    Addon:RegisterEvent("PLAYER_ENTERING_WORLD", Addon.Update)
-    Addon:SecureHook("MultiActionBar_Update", Addon.UpdateChildButtons)
-    Addon:SecureHook("MainMenuBar_UpdateExperienceBars", Addon.UpdateChildButtons)
-
-    Addon:Update()
 end
 
 function Addon:Update()
@@ -43,16 +36,6 @@ function Addon:Update()
     for name, config in pairs(E.db[addonName].bars) do
         if not Addon.bars[name] then
             Addon.bars[name] = Addon:CreateFlyoutBar(name, config)
-        end
-    end
-end
-
-function Addon:UpdateChildButtons()
-    for _, bar in pairs(Addon.bars) do
-        for _, button in ipairs(bar.buttons) do
-            for _, child in ipairs(button.childButtons) do
-                Addon:UpdateFlyoutButtonChild(child)
-            end
         end
     end
 end
