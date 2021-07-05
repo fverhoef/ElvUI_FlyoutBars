@@ -29,6 +29,7 @@ function Addon:Update()
             Addon:UpdateFlyoutBar(bar)
         else
             bar:Hide()
+            E:DisableMover(bar.mover:GetName())
             Addon.bars[name] = nil
         end
     end

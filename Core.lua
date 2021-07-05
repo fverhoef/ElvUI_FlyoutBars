@@ -19,8 +19,8 @@ local function FixNormalTextureSize(button)
     end
 end
 
-local function CreateMover(frame, name)
-    E:CreateMover(frame, name, name, nil, nil, nil, "ALL,ACTIONBARS", nil, "actionbars")
+local function CreateMover(frame, name, textString)
+    E:CreateMover(frame, name, textString, nil, nil, nil, "ALL,ACTIONBARS")
 
     if frame.db.inheritGlobalFade then
         frame:SetParent(AB.fadeParent)
@@ -77,7 +77,7 @@ function Addon:CreateFlyoutBar(name, config)
         end
     end)
 
-    CreateMover(bar, addonName .. "_" .. name)
+    CreateMover(bar, addonName .. "_" .. name .. "Mover", name)
     Addon:UpdateFlyoutBar(bar)
 
     return bar
