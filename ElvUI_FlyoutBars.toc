@@ -1,6 +1,6 @@
-## Interface: 11305
+## Interface: 20503
 ## Author: Neya
-## Version: 0.15
+## Version: 0.16
 ## Title: |cff1784d1ElvUI|r |cffFFB600Flyout Bars|r
 ## Notes: Adds flyout bars for class utility spells and totems.
 ## RequiredDeps: ElvUI

@@ -313,29 +313,9 @@ function Addon:CreateFlyoutButtonBackground(button)
     button.FlyoutArrow = button.FlyoutArrowHolder:CreateTexture(nil, "OVERLAY", "ActionBarFlyoutButton-ArrowUp")
     button.FlyoutArrow:SetPoint("CENTER", button.FlyoutArrowHolder, "CENTER")
 
-    button.FlyoutBackground = CreateFrame("Frame", button:GetName() .. "_Background", button)
+    button.FlyoutBackground = CreateFrame("Frame", button:GetName() .. "_Background", button, "BackdropTemplate")
     button.FlyoutBackground:EnableMouse(true)
-
-    button.FlyoutBackground.End = button.FlyoutBackground:CreateTexture(nil, "BACKGROUND")
-    button.FlyoutBackground.End:SetTexture([[Interface\Buttons\ActionBarFlyoutButton]])
-    button.FlyoutBackground.End:SetTexCoord(0.01562500, 0.59375000, 0.74218750, 0.91406250)
-    button.FlyoutBackground.End:SetVertexColor(0.5, 0.5, 0.5, 1)
-    button.FlyoutBackground.End:SetSize(button.size, 22)
-    button.FlyoutBackground.End:Hide()
-
-    button.FlyoutBackground.Vertical = button.FlyoutBackground:CreateTexture(nil, "BACKGROUND")
-    button.FlyoutBackground.Vertical:SetTexture([[Interface\Buttons\ActionBarFlyoutButton-FlyoutMid]])
-    button.FlyoutBackground.Vertical:SetTexCoord(0, 0.578125, 0, 1)
-    button.FlyoutBackground.Vertical:SetVertexColor(0.5, 0.5, 0.5, 1)
-    button.FlyoutBackground.Vertical:SetSize(button.size, button.size)
-    button.FlyoutBackground.Vertical:Hide()
-
-    button.FlyoutBackground.Horizontal = button.FlyoutBackground:CreateTexture(nil, "BACKGROUND")
-    button.FlyoutBackground.Horizontal:SetTexture([[Interface\Buttons\ActionBarFlyoutButton-FlyoutMidLeft]])
-    button.FlyoutBackground.Horizontal:SetTexCoord(0, 1, 0, 0.578125)
-    button.FlyoutBackground.Horizontal:SetVertexColor(0.5, 0.5, 0.5, 1)
-    button.FlyoutBackground.Horizontal:SetSize(button.size, button.size)
-    button.FlyoutBackground.Horizontal:Hide()
+    button.FlyoutBackground:SetTemplate()
 end
 
 function Addon:UpdateFlyoutButtonBackground(button)
@@ -365,61 +345,27 @@ function Addon:UpdateFlyoutButtonBackground(button)
     end
 
     button.FlyoutBackground:EnableMouse(button.isOpen)
-    button.FlyoutBackground.End:SetSize(button.size, 22)
-    button.FlyoutBackground.Vertical:SetSize(button.size, button.size)
-    button.FlyoutBackground.Horizontal:SetSize(button.size, button.size)
 
     if button.bar.db.direction == "UP" then
-        button.FlyoutBackground:SetPoint("BOTTOM", button, "TOP")
-        button.FlyoutBackground.End:Show()
-        button.FlyoutBackground.End:SetPoint("TOP", button.FlyoutBackground, "TOP", 0, 0)
-        SetClampedTextureRotation(button.FlyoutBackground.End, 0)
-        button.FlyoutBackground.Horizontal:Hide()
-        button.FlyoutBackground.Vertical:Show()
-        button.FlyoutBackground.Vertical:ClearAllPoints()
-        button.FlyoutBackground.Vertical:SetPoint("TOP", button.FlyoutBackground.End, "BOTTOM")
-        button.FlyoutBackground.Vertical:SetPoint("BOTTOM", 0, -4)
+        button.FlyoutBackground:SetPoint("BOTTOM", button, "TOP", 0, -4)
     elseif button.bar.db.direction == "DOWN" then
-        button.FlyoutBackground:SetPoint("TOP", button, "BOTTOM")
-        button.FlyoutBackground.End:Show()
-        button.FlyoutBackground.End:SetPoint("BOTTOM", button.FlyoutBackground, "BOTTOM", 0, 0)
-        SetClampedTextureRotation(button.FlyoutBackground.End, 180)
-        button.FlyoutBackground.Horizontal:Hide()
-        button.FlyoutBackground.Vertical:Show()
-        button.FlyoutBackground.Vertical:ClearAllPoints()
-        button.FlyoutBackground.Vertical:SetPoint("BOTTOM", button.FlyoutBackground.End, "TOP")
-        button.FlyoutBackground.Vertical:SetPoint("TOP", 0, 4)
+        button.FlyoutBackground:SetPoint("TOP", button, "BOTTOM", 0, 4)
     elseif button.bar.db.direction == "LEFT" then
-        button.FlyoutBackground:SetPoint("RIGHT", button, "LEFT")
-        button.FlyoutBackground.End:Show()
-        button.FlyoutBackground.End:SetPoint("LEFT", button.FlyoutBackground, "LEFT", 0, 0)
-        SetClampedTextureRotation(button.FlyoutBackground.End, 270)
-        button.FlyoutBackground.Vertical:Hide()
-        button.FlyoutBackground.Horizontal:Show()
-        button.FlyoutBackground.Horizontal:ClearAllPoints()
-        button.FlyoutBackground.Horizontal:SetPoint("LEFT", button.FlyoutBackground.End, "RIGHT")
-        button.FlyoutBackground.Horizontal:SetPoint("RIGHT", 4, 0)
+        button.FlyoutBackground:SetPoint("RIGHT", button, "LEFT", -4, 0)
     elseif button.bar.db.direction == "RIGHT" then
-        button.FlyoutBackground:SetPoint("LEFT", button, "RIGHT")
-        button.FlyoutBackground.End:Show()
-        button.FlyoutBackground.End:SetPoint("RIGHT", button.FlyoutBackground, "RIGHT", 0, 0)
-        SetClampedTextureRotation(button.FlyoutBackground.End, 90)
-        button.FlyoutBackground.Vertical:Hide()
-        button.FlyoutBackground.Horizontal:Show()
-        button.FlyoutBackground.Horizontal:ClearAllPoints()
-        button.FlyoutBackground.Horizontal:SetPoint("RIGHT", button.FlyoutBackground.End, "LEFT")
-        button.FlyoutBackground.Horizontal:SetPoint("LEFT", -4, 0)
+        button.FlyoutBackground:SetPoint("LEFT", button, "RIGHT", 4, 0)
     end
 
     if (button.bar.db.direction == "UP" or button.bar.db.direction == "DOWN") then
         button.FlyoutBackground:SetHeight((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count -
                                               SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING +
-                                              SPELLFLYOUT_FINAL_SPACING)
+                                              SPELLFLYOUT_FINAL_SPACING + 2)
         button.FlyoutBackground:SetWidth(button.size - 3)
     else
         button.FlyoutBackground:SetHeight(button.size - 3)
         button.FlyoutBackground:SetWidth((button.childSize + SPELLFLYOUT_DEFAULT_SPACING) * button.count -
-                                             SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING + SPELLFLYOUT_FINAL_SPACING)
+                                             SPELLFLYOUT_DEFAULT_SPACING + SPELLFLYOUT_INITIAL_SPACING + SPELLFLYOUT_FINAL_SPACING +
+                                             2)
     end
 end
 
