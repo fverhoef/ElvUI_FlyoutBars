@@ -1,4 +1,4 @@
-## Interface: 20503
+## Interface: 20504
 ## Author: Neya
 ## Version: 0.16
 ## Title: |cff1784d1ElvUI|r |cffFFB600Flyout Bars|r
